@@ -34,12 +34,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arduino/board-discovery"
+	"github.com/coreyog/board-discovery"
 )
 
 // TestUsage doesn't really test anything, since we don't have (yet) a way to reproduce hardware. It's useful to test by hand though
 func TestUsage(t *testing.T) {
-	monitor := discovery.New(time.Millisecond)
+	monitor := discovery.New(time.Millisecond, true, true)
 	monitor.Start()
 
 	time.Sleep(10 * time.Second)

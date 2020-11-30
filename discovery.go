@@ -166,6 +166,9 @@ type Event struct {
 type Monitor struct {
 	Interval time.Duration
 
+	checkSerial  bool
+	checkNetwork bool
+
 	serial    SerialDevices
 	network   NetworkDevices
 	stoppable *cc.Stoppable
@@ -174,8 +177,8 @@ type Monitor struct {
 // MarshalJSON allows a monitor to be parsed as a JSON object.
 func (m Monitor) MarshalJSON() ([]byte, error) {
 	type DevicesList struct {
-		Serial  SerialDevices  `json:"serial,required"`
-		Network NetworkDevices `json:"network,required"`
+		Serial  SerialDevices  `json:"serial"`
+		Network NetworkDevices `json:"network"`
 	}
 	type MarshallableMonitor struct {
 		Devices DevicesList `json:"devices"`
@@ -188,13 +191,38 @@ func (m Monitor) MarshalJSON() ([]byte, error) {
 
 // New Creates a new monitor that can start querying the serial ports and
 // the local network for devices
-func New(interval time.Duration) *Monitor {
-	m := Monitor{
-		serial:   SerialDevices{},
-		network:  NetworkDevices{},
-		Interval: interval,
+func New(interval time.Duration, checkSerial bool, checkNetwork bool) *Monitor {
+	return &Monitor{
+		checkSerial:  checkSerial,
+		checkNetwork: checkNetwork,
+		serial:       SerialDevices{},
+		network:      NetworkDevices{},
+		Interval:     interval,
 	}
-	return &m
+}
+
+func DiscoverNow(checkSerial bool, checkNetwork bool) (serialPorts []string, networkPorts []string) {
+	m := &Monitor{}
+	if checkNetwork {
+		m.networkDiscover() // nolint
+	}
+
+	if checkSerial {
+		m.serialDiscover() // nolint
+	}
+
+	serialPorts = make([]string, 0, len(m.serial))
+	networkPorts = make([]string, 0, len(m.network))
+
+	for port := range m.serial {
+		serialPorts = append(serialPorts, port)
+	}
+
+	for port := range m.network {
+		networkPorts = append(networkPorts, port)
+	}
+
+	return serialPorts, networkPorts
 }
 
 // Start begins the loop that queries the serial ports and the local network.
@@ -215,7 +243,13 @@ func (m *Monitor) Start() {
 	monitorSerial := monitorStopFunc(m.serialDiscover)
 	monitorNetwork := monitorStopFunc(m.networkDiscover)
 
-	m.stoppable = cc.Run(monitorSerial, monitorNetwork)
+	if m.checkNetwork && !m.checkSerial {
+		m.stoppable = cc.Run(monitorNetwork)
+	} else if !m.checkNetwork && m.checkSerial {
+		m.stoppable = cc.Run(monitorSerial)
+	} else if m.checkNetwork && m.checkSerial {
+		m.stoppable = cc.Run(monitorSerial, monitorNetwork)
+	}
 }
 
 // Stop stops the monitor, waiting for the last operation

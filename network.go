@@ -30,6 +30,7 @@
 package discovery
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -77,7 +78,8 @@ func (d *NetworkDevice) isUp(times int) bool {
 
 func (d *NetworkDevice) _isUp() bool {
 	timeout := time.Duration(1500 * time.Millisecond)
-	conn, err := net.DialTimeout("tcp", d.Address+":"+string(d.Port), timeout)
+	addr := fmt.Sprintf("%s:%d", d.Address, d.Port)
+	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
 		// Check if the port 22 is open
 		conn, err = net.DialTimeout("tcp", d.Address+":22", timeout)
