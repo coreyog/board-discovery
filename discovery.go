@@ -202,7 +202,10 @@ func New(interval time.Duration, checkSerial bool, checkNetwork bool) *Monitor {
 }
 
 func DiscoverNow(checkSerial bool, checkNetwork bool) (serialPorts []string, networkPorts []string) {
-	m := &Monitor{}
+	m := &Monitor{
+		serial:  SerialDevices{},
+		network: NetworkDevices{},
+	}
 	if checkNetwork {
 		m.networkDiscover() // nolint
 	}
@@ -234,7 +237,7 @@ func (m *Monitor) Start() {
 				case <-stopSignal:
 					return
 				default:
-					monitorFunc()
+					monitorFunc() // nolint
 				}
 			}
 		}
